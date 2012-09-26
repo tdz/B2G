@@ -94,6 +94,41 @@ flash_fastboot()
 	echo -ne \\a
 }
 
+flash_fastboot_noerase()
+{
+	if [ $? -ne 0 ]; then
+		echo Couldn\'t setup fastboot
+		return -1
+	fi
+	case $2 in
+	"system" | "boot" | "userdata")
+		run_adb reboot bootloader ;
+		run_fastboot devices &&
+		( [ "$1" = "nounlock" ] || run_fastboot oem unlock || true )
+
+		fastboot_flash_image $2 &&
+		run_fastboot reboot
+		;;
+
+	*)
+		run_adb shell 'while [ -d /data/local ]; do rm -r /data/local; sleep 1; done'
+    run_adb shell rm -r /data/*
+    run_adb shell rm -r /cache/*
+		run_adb reboot bootloader ;
+		run_fastboot devices &&
+		( [ "$1" = "nounlock" ] || run_fastboot oem unlock || true )
+
+		fastboot_flash_image userdata &&
+		([ ! -e out/target/product/$DEVICE/boot.img ] ||
+		fastboot_flash_image boot) &&
+		fastboot_flash_image system &&
+		run_fastboot reboot &&
+		update_time
+		;;
+	esac
+	echo -ne \\a
+}
+
 flash_heimdall()
 {
 	if [ ! -f "`which \"$HEIMDALL\"`" ]; then
@@ -196,7 +231,7 @@ case "$DEVICE" in
 	;;
 
 "panda")
-	flash_fastboot unlock $PROJECT
+	flash_fastboot_noerase unlock $PROJECT
 	;;
 
 "maguro")
