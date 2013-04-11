@@ -115,7 +115,7 @@ case "$1" in
 	repo_sync $1
 	;;
 
-"otoro"|"unagi"|"keon"|"inari"|"leo"|"hamachi"|"peak"|"helix"|"wasabi"|"flatfish")
+"otoro"|"unagi"|"keon"|"inari"|"leo"|"hamachi"|"peak"|"sawara"|"helix"|"wasabi"|"flatfish")
 	echo DEVICE=$1 >> .tmp-config &&
 	repo_sync $1
 	;;
@@ -152,7 +152,7 @@ case "$1" in
 	echo DEVICE=vixen >> .tmp-config &&
 	echo PRODUCT_NAME=vixen >> .tmp-config &&
 	repo_sync $1
-	;;  
+	;;
 
 "emulator"|"emulator-jb"|"emulator-kk"|"emulator-l")
 	echo DEVICE=generic >> .tmp-config &&
@@ -211,6 +211,7 @@ case "$1" in
 	echo - tarako
 	echo - dolphin
 	echo - dolphin-512
+	echo - sawara
 	echo - pandaboard
 	echo - vixen
 	echo - flatfish

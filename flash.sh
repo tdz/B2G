@@ -83,7 +83,6 @@ fastboot_flash_image_if_exists()
 	fi
 }
 
-
 flash_fastboot()
 {
 	local lockedness=$1 project=$2
@@ -143,9 +142,8 @@ flash_fastboot()
 		fi
 		DATA_PART_NAME="userdata"
 		if [ "$DEVICE" == "flatfish" ]; then
-			DATA_PART_NAME="data"
+		  DATA_PART_NAME="data"
 		fi
-		# helix/dolphin don't support erase command in fastboot mode.
 		if [ "$DEVICE" != "helix" -a "$DEVICE_NAME" != "dolphin" ]; then
 			run_fastboot $VERB cache &&
 			run_fastboot $VERB $DATA_PART_NAME
@@ -153,6 +151,92 @@ flash_fastboot()
 				return $?
 			fi
 		fi
+		if [ "$DEVICE" == "aries" ] || [ "$DEVICE" == "shinano" ]; then
+			fastboot_flash_image recovery
+		fi
+		fastboot_flash_image userdata &&
+		fastboot_flash_image_if_exists cache &&
+		fastboot_flash_image_if_exists boot &&
+		fastboot_flash_image system &&
+		run_fastboot reboot &&
+		update_time
+		;;
+	esac
+	echo -ne \\a
+}
+
+flash_fastboot_sawara()
+{
+	local lockedness=$1 project=$2
+	case $lockedness in
+	"unlock"|"nounlock")
+		;;
+	*)
+		echo "$0: $FUNCNAME: Invalid argument: $lockedness"
+		return 1
+		;;
+	esac
+	case $project in
+	"system"|"boot"|"userdata"|"cache"|"")
+		;;
+	*)
+		echo "$0: Unrecognized project/partition: $project"
+		return 1
+		;;
+	esac
+
+	delete_single_variant_persist
+
+	case $DEVICE in
+	"helix")
+		run_adb reboot oem-1
+		;;
+	"flatfish")
+		run_adb reboot boot-fastboot
+		;;
+	*)
+		run_adb reboot bootloader
+		;;
+	esac
+
+	if ! run_fastboot devices; then
+		echo Couldn\'t setup fastboot
+		return 1
+	fi
+
+	case $lockedness in
+	"unlock")
+		run_fastboot oem unlock || true
+		;;
+	esac
+
+	case $project in
+	"system" | "boot" | "userdata" | "cache")
+		fastboot_flash_image $project &&
+		run_fastboot reboot
+		;;
+
+	"")
+		# sawara doesn't support erase or format command in fastboot mode.
+		if [ "$DEVICE" != "sawara" ]; then
+		  VERB="erase"
+		  if [ "$DEVICE" == "hammerhead" ] || [ "$DEVICE" == "mako" ] ||
+		  [ "$DEVICE" == "flo" ]; then
+			  VERB="format"
+		  fi
+		  DATA_PART_NAME="userdata"
+		  if [ "$DEVICE" == "flatfish" ]; then
+			  DATA_PART_NAME="data"
+		  fi
+		  # helix/dolphin don't support erase command in fastboot mode.
+		  if [ "$DEVICE" != "helix" -a "$DEVICE_NAME" != "dolphin" ]; then
+			  run_fastboot $VERB cache &&
+			  run_fastboot $VERB $DATA_PART_NAME
+			  if [ $? -ne 0 ]; then
+				  return $?
+			  fi
+		  fi
+    fi
 		if [ "$DEVICE" == "aries" ] || [ "$DEVICE" == "shinano" ]; then
 			fastboot_flash_image recovery
 		fi
@@ -397,6 +481,10 @@ case "$DEVICE" in
 
 "panda"|"maguro"|"crespo"|"crespo4g"|"mako"|"hammerhead"|"flo")
 	flash_fastboot unlock $PROJECT
+	;;
+
+"sawara")
+	flash_fastboot_sawara nounlock $PROJECT
 	;;
 
 "galaxys2")
